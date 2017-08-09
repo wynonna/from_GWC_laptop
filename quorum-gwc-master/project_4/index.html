@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style> /* set the CSS */
+
+body {
+  font-family: 'Helvetica Neue', sans-serif;
+}
+
+.g-hed {
+  text-align: left;
+  text-transform: uppercase;
+  font-weight: bold;
+  font-size:22px;
+  margin: 3px 0;
+}
+
+.g-source-bold {
+  text-align: left;
+  font-size:10px;
+  font-weight: bold;
+}
+
+.g-source-reg {
+  text-align: left;
+  font-size:10px;
+}
+
+.g-source {
+  margin: 10px 0;
+}
+
+.g-intro {
+  font-size: 16px;
+  margin: 0px 0px 10px 0px;
+}
+
+path { 
+    stroke-width: 2;
+    fill: none;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: grey;
+    stroke-width: 1;
+    shape-rendering: crispEdges;
+}
+
+.legend rect {
+  fill:white;
+  stroke:black;
+  opacity:0.8;}
+
+</style>
+<head>
+	<link rel="shortcut icon" href="">
+</head>
+<body>
+
+    <h5 class="g-hed"></h5>
+    <p class="g-intro"></p>
+    <div class="g-trends"></div>
+    <div class="legend">
+        <div class="block" id="q0-9"></div>
+        <div class="block" id="q1-9"></div>
+        <div class="block" id="q2-9"></div>
+        <div class="block" id="q3-9"></div>
+        <div class="block" id="q4-9"></div>
+    </div>
+    <div class="g-source">
+        <span class="g-source-bold"></span>
+        <span class="g-source-reg"></span>
+    </div>
+
+<!-- load the libraries -->    
+<script src="https://cdnjs.cloudflare.com/ajax/libs/queue-async/1.0.7/queue.min.js"></script>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="d3.legend.js"></script>
+
+<script>
+    /**
+     *      Build the header, intro, and footer
+     */
+
+    //Appends chart headline
+    d3.select(".g-hed").text("Trending topics over time!");
+
+    //Appends chart intro text
+    d3.select(".g-intro").text("Let's look at the national dialogue!");
+
+    //Appends chart source
+    d3.select(".g-source-bold")
+        .text("SOURCE: ")
+        .attr("class", "g-source-bold");
+
+    d3.select(".g-source-reg")
+        .text("Quorum | www.quorum.us")
+        .attr("class", "g-source-reg");
+
+    /**
+     *      Building the trendline graph!
+     */
+
+    // Set the dimensions of the canvas / graph
+    var margin = {top: 30, right: 75, bottom: 30, left: 75},
+        width = window.outerWidth - margin.left - margin.right,
+        aspectRatio = .25,
+        height = width * aspectRatio
+
+    // Parse the date / time
+    var parseDate = d3.time.format("%Y%m%d").parse; 
+
+    // Set the ranges
+    var x = d3.time.scale().range([0, width]);
+    var y = d3.scale.linear().range([height, 0]);
+
+    // Define the axes
+    var xAxis = d3.svg.axis().scale(x)
+        .orient("bottom").ticks(5);
+
+    var yAxis = d3.svg.axis().scale(y)
+        .orient("left").ticks(5);
+
+    // Define the line
+    var priceline = d3.svg.line()
+        .x(function(d) { return x(d.date); })
+        .y(function(d) { return y(d.count); });
+        
+    // Adds the svg canvas
+    var trendline = d3.select(".g-trends")
+        .append("svg")
+            .attr("preserveAspectRatio", "xMinYMin meet")
+            .attr("viewBox", "0 0 " + (width + margin.left + margin.right) + " " + (height + margin.top + margin.bottom))
+        .append("g")
+            .attr("transform", 
+                  "translate(" + margin.left + "," + margin.top + ")");
+
+    // Get the data
+
+    d3.csv("data.csv", function(error, data) {
+        // colors for each line
+        var colors = ['blue','green','red','orange','purple','pink','lightblue']
+        // Set the data to what we want to display
+        data.forEach(function(d) {
+          d.date = parseDate(d.date)
+          d.count = +d.count
+        })
+
+        // Scale the range of the data
+        x.domain(d3.extent(data, function(d) { return d.date; }))
+        y.domain([0, d3.max(data, function(d) { return d.count; })])
+
+        // Nest the entries by label
+        var dataNest = d3.nest()
+            .key(function(d) {return d.label;})
+            .entries(data)
+
+        // Loop through each label / key
+        dataNest.forEach(function(d, i) {
+            trendline.append("path")
+                .attr("class", "line")
+                .attr("data-legend", d.key)
+                .attr("d", priceline(d.values))
+                .attr("stroke", colors[i])
+        })
+
+        // Add the X Axis
+        trendline.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(xAxis);
+
+        // Add the Y Axis
+        trendline.append("g")
+            .attr("class", "y axis")
+            .call(yAxis)
+
+        // Add the legend
+        legend = trendline.append("g")
+            .attr("class","legend")
+            .attr("transform","translate(50,30)")
+            .call(d3.legend)
+
+        //RESPONSIVENESS
+        d3.select(window).on('resize', resize)
+
+        function resize() {
+            var w = d3.select(".g-trends").node().clientWidth
+            console.log("resized", w)
+
+            // adjust things when the window size changes
+            width = w - margin.left - margin.right
+            height = width * aspectRatio
+
+            // resize the map container
+            trendline
+                .select("svg")
+                .attr('width', width + 'px')
+                .attr('height', height + 'px')
+
+        }
+    });
+
+</script>
+</body>
